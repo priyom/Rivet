@@ -13,158 +13,137 @@
 
 package org.e2k;
 
-import javax.swing.JComponent;
-import java.util.Observer;
-import java.util.Observable;
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
+import javax.swing.*;
+import javax.swing.text.*;
+import java.awt.*;
+import java.awt.event.AdjustmentEvent;
+import java.awt.event.AdjustmentListener;
 
-public class DisplayView extends JComponent implements Observer {
-	
-	public static final long serialVersionUID=1;
-	private static final int DISPLAYCOUNT=329;
-	private String displayString[]=new String[DISPLAYCOUNT];
-	private Color displayColour[]=new Color[DISPLAYCOUNT];
-	private Font displayFont[]=new Font[DISPLAYCOUNT];
-	private int displayCounter=0;
-	private Rivet theApp;	
-	
-	public DisplayView (Rivet theApp) {
-		this.theApp=theApp;	
-		//screenTest();
-	}
-			
-	public void update (Observable o,Object rectangle)	{			
-	}
-			
-	// Draw the main screen //
-	public void paint (Graphics g) {
-		// Oldest line first
-		int count=0,pos=20,i=displayCounter+1;
-		// Check it hasn't reached its maximum size
-		if (i>=DISPLAYCOUNT) i=0;
-		Graphics2D g2D=(Graphics2D)g;	
-		// Draw in the lines on the screen
-		// taking account of the fact that the data is stored in a circular buffer
-		// we need to display the oldest line stored first and then go backwards from
-		// that point onwards
-		while(count<DISPLAYCOUNT)	{
-			// Only display info if something is stored in the display string
-			if (displayString[i]!=null)	{
-				g.setColor(displayColour[i]);
-				g.setFont(displayFont[i]);
-				g2D.drawString(displayString[i].toString(),(5-theApp.horizontal_scrollbar_value),(pos-theApp.vertical_scrollbar_value));	
-				pos=pos+20;
-			}	
-			i++;
-			if (i==DISPLAYCOUNT) i=0;
-			count++;
-		}	
-		// Detect if the last line written was outside the current viewing area
-		if ((theApp.isAutoScroll()==true)&&(theApp.isAdjusting()==false))	{
-			if ((pos-theApp.vertical_scrollbar_value)>theApp.getCurrentHeight())	{
-				theApp.scrollDown(pos);
-				repaint();
-			}
-		}
-		
-	}
-	
-	// Add a line to the display circular buffer //
-	public void addLine (String line,Color tcol,Font tfont) {		
-		// There may be data on the current line which was added by addChar() so we need to move to the next line
-		// Increment the circular buffer
-		displayCounter++;
-		// Check it hasn't reached its maximum size
-		if (displayCounter==DISPLAYCOUNT) displayCounter=0;
-		// Add this line
-		displayString[displayCounter]=line;
-		displayColour[displayCounter]=tcol;
-		displayFont[displayCounter]=tfont;
-		// Test if autoscroll needs to be on
-		theApp.setAutoScroll(autoScrollSet());
-		// Repaint the screen
-		repaint();
-	}
-	
-	// Gets all the text on the screen and returns it as a string
-	public String getText()	{
-		StringBuilder buffer=new StringBuilder();
-		int i=displayCounter+1,count=0;
-		// Check it hasn't reached its maximum size
-		if (i>=DISPLAYCOUNT) i=0;
-		while(count<DISPLAYCOUNT)	{
-			if (displayString[i]!=null)	{
-				buffer.append(displayString[i]);
-				buffer.append("\n");
-			}	
-			i++;
-			if (i>=DISPLAYCOUNT) i=0;
-			count++;
-		}
-		return buffer.toString();
-	}
-	
-	// Adds a single character to the current line
-	public void addChar (String ch,Color col,Font font)	{
-		if (displayString[displayCounter]==null) displayString[displayCounter]="";
-		StringBuilder sb=new StringBuilder(displayString[displayCounter]);
-        sb.append(ch);
-		displayColour[displayCounter]=col;
-		displayFont[displayCounter]=font;
-		displayString[displayCounter]=sb.toString();
-		// Test if autoscroll needs to be on
-		theApp.setAutoScroll(autoScrollSet());
-		// Redraw
-		repaint();
-	}
-	
-	// Newline
-	public void newLine ()	{
-		// Increment the circular buffer
-		displayCounter++;
-		// Check it hasn't reached its maximum size
-		if (displayCounter==DISPLAYCOUNT) displayCounter=0;
-		displayString[displayCounter]="";
-		// Test if auto scroll needs to be on
-		theApp.setAutoScroll(autoScrollSet());
-		// Redraw
-		repaint();
-	}
-	
-	// Clear the display screen
-	public void clearScreen	()	{
-		int a;
-		displayCounter=0;
-		for (a=0;a<DISPLAYCOUNT;a++)	{
-			displayString[a]=null;
-		}
-		// Scroll right back up the top
-		theApp.scrollDown(0);
-		// Repaint
-		repaint();
-	}
-	
-	// A screen display test routine
-	private void screenTest()	{
-		int a;
-		for (a=0;a<DISPLAYCOUNT;a++)	{
-			String line="Line "+Integer.toString(a)+" test";
-			addLine(line,Color.BLACK,theApp.italicFont);
-		}
-	}
-	
-	// Check if autoscroll should be turned on
-	private boolean autoScrollSet()	{
-		// Get the current time
-		long currentTime=System.currentTimeMillis()/1000;
-		// Is it 30 seconds or more since the last user scroll operation
-		// if so return true
-		if (currentTime-theApp.getLastUserScroll()>=30) return true;
-		else return false;
-	}
-	
+public class DisplayView extends JPanel implements AdjustmentListener {
+    public static final long serialVersionUID = 1;
+    private final StyledDocument doc;
 
+    private boolean adjustScrollBar = true;
+
+    private int scrollPreviousValue = -1;
+    private int scrollPreviousMaximum = -1;
+
+    public DisplayView() {
+        super(new BorderLayout());
+        JTextPane textPane = new JTextPane();
+        textPane.setEditable(false);
+
+        doc = textPane.getStyledDocument();
+
+        JPopupMenu namePopMenu = new JPopupMenu();
+        JMenuItem copy = new JMenuItem("Copy");
+        copy.addActionListener(new DefaultEditorKit.CopyAction());
+        namePopMenu.add(copy);
+        textPane.setComponentPopupMenu(namePopMenu);
+
+        JScrollPane scrollPane = new JScrollPane(textPane);
+        scrollPane.getVerticalScrollBar().addAdjustmentListener(this);
+        this.add(scrollPane, BorderLayout.CENTER);
+    }
+
+    private AttributeSet composeTextAttributeSet(Color color, Font font) {
+        SimpleAttributeSet attrs = new SimpleAttributeSet();
+        StyleConstants.setForeground(attrs, color);
+        StyleConstants.setItalic(attrs, font.isItalic());
+        StyleConstants.setBold(attrs, font.isBold());
+        StyleConstants.setFontFamily(attrs, font.getFamily());
+        StyleConstants.setFontSize(attrs, font.getSize());
+        return attrs;
+    }
+
+    // Gets all the text on the screen and returns it as a string
+    public String getText() {
+        try {
+            return doc.getText(0, doc.getLength());
+        } catch (BadLocationException e) {
+            System.err.println(e.getMessage());
+            e.printStackTrace();
+        }
+        return "";
+    }
+
+    // Add a line to the display //
+    public void addLine(String line, Color tcol, Font tfont) {
+        try {
+            doc.insertString(doc.getLength(), line + "\n", composeTextAttributeSet(tcol, tfont));
+        } catch (Exception e) {
+            System.err.println(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // Adds a single character to the current line
+    public void addChar(String ch, Color col, Font font) {
+        try {
+            doc.insertString(doc.getLength(), ch, composeTextAttributeSet(col, font));
+        } catch (Exception e) {
+            System.err.println(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // Newline
+    public void newLine() {
+        try {
+            doc.insertString(doc.getLength(), "\n", new SimpleAttributeSet());
+        } catch (Exception e) {
+            System.err.println(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // Clear the display screen
+    public void clearScreen() {
+        try {
+            doc.remove(0, doc.getLength());
+        } catch (BadLocationException e) {
+            System.err.println(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void adjustmentValueChanged(final AdjustmentEvent e) {
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                checkScrollBar(e);
+            }
+        });
+    }
+
+    private void checkScrollBar(AdjustmentEvent e) {
+        JScrollBar scrollBar = (JScrollBar) e.getSource();
+        BoundedRangeModel listModel = scrollBar.getModel();
+        int value = listModel.getValue();
+        int extent = listModel.getExtent();
+        int maximum = listModel.getMaximum();
+
+        boolean valueChanged = scrollPreviousValue != value;
+        boolean maximumChanged = scrollPreviousMaximum != maximum;
+
+        //  Check if the user has manually repositioned the scrollbar
+
+        if (valueChanged && !maximumChanged) {
+            adjustScrollBar = value + extent >= maximum;
+        }
+
+        //  Reset the "value" so we can reposition the viewport and
+        //  distinguish between a user scroll and a program scroll.
+        //  (ie. valueChanged will be false on a program scroll)
+
+        if (adjustScrollBar) {
+            //  Scroll the viewport to the end.
+            scrollBar.removeAdjustmentListener(this);
+            value = maximum - extent;
+            scrollBar.setValue(value);
+            scrollBar.addAdjustmentListener(this);
+        }
+        scrollPreviousValue = value;
+        scrollPreviousMaximum = maximum;
+    }
 }

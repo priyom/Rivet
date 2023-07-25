@@ -31,7 +31,6 @@ public class DisplayFrame extends JFrame implements ActionListener {
 	private Rivet theApp;
 	public static final long serialVersionUID=1;
 	private JStatusBar statusBar=new JStatusBar();
-	public JScrollBar vscrollbar=new JScrollBar(JScrollBar.VERTICAL,0,1,0,6000);
 	private JMenu triggersMenu=new JMenu("Triggers");
 	private JMenuItem exit_item,wavLoad_item,save_to_file,about_item,help_item,debug_item,soundcard_item,reset_item,copy_item,bitstream_item;
 	private JMenuItem XPA_10_item,XPA_20_item,XPA2_item,CROWD36_item,experimental_item,CIS3650_item,FSK200500_item,CCIR493_item,GW_item,RTTY_item;
@@ -170,15 +169,7 @@ public class DisplayFrame extends JFrame implements ActionListener {
 		helpMenu.add(UDXF_item=new JMenuItem("UDXF"));		
 		UDXF_item.addActionListener(this);
 		menuBar.add(helpMenu);
-		// Add the vertical scroll bar
-		add(vscrollbar,BorderLayout.EAST);
-		// Add a listener for this
-		vscrollbar.addAdjustmentListener(new MyAdjustmentListener());
-		// Add a mouse event listener to the vertical scroll bar
-		vscrollbar.addMouseWheelListener(new MouseAdjustmentListener());
-		// Add a mouse wheel event listener to the main screen
-		this.addMouseWheelListener(new MouseAdjustmentListener());
-		
+
 		// Setup the status bar
 		getContentPane().add(statusBar, java.awt.BorderLayout.SOUTH);
 		statusBar.setLoggingStatus("Not Logging");
@@ -191,52 +182,6 @@ public class DisplayFrame extends JFrame implements ActionListener {
 		statusBarUpdate();
 		}
 
-	
-	// Handle messages from the scrollbars
-	class MyAdjustmentListener implements AdjustmentListener  {
-		public void adjustmentValueChanged(AdjustmentEvent e) {
-			// Vertical scrollbar
-			if (e.getSource()==vscrollbar) {
-				theApp.vertical_scrollbar_value=e.getValue();
-				// Is this a user scroll operation
-				if (vscrollbar.getValueIsAdjusting()==true)	{
-					// Record the time that this occurred
-					theApp.setLastUserScroll(System.currentTimeMillis()/1000);
-					// Turn off auto scroll
-					theApp.setAutoScroll(false);
-				}
-				// Redraw
-				repaint();   
-			}
-		}
-	 }
-	
-	// Handle all mouse adjustment events
-	class MouseAdjustmentListener implements MouseWheelListener	{
-		// Handle any mousewheel events
-		public void mouseWheelMoved(MouseWheelEvent me) {
-			int notches=me.getWheelRotation();
-			int vc=vscrollbar.getValue();
-			final int ADJUST=4;
-			// Down 
-			if (notches>0)	{
-				vc=vc+ADJUST;
-				vscrollbar.setValue(vc);
-			}
-			// Up
-			else if (notches<0)	{
-				if (vc>ADJUST) vc=vc-ADJUST;
-				vscrollbar.setValue(vc);
-			}
-			else return;
-			// Record the user has done this
-			// Record the time that this occurred
-			theApp.setLastUserScroll(System.currentTimeMillis()/1000);
-			// Turn off auto scroll for now
-			theApp.setAutoScroll(false);
-		}
-	}
-	
 	// Handle all menu events
 	public void actionPerformed (ActionEvent event) {
 		String event_name=event.getActionCommand();	
@@ -696,14 +641,6 @@ public class DisplayFrame extends JFrame implements ActionListener {
 		}
 	}	
 
-	
-	public void scrollDown(int v)	{
-		vscrollbar.setValue(v);
-	}
-	
-	public boolean isAdjusting()	{
-		return vscrollbar.getValueIsAdjusting();
-	}
 	
 	// Tell the status bar that this is a small screen
 	public void setSmallScreen()	{

@@ -44,13 +44,10 @@ import org.xml.sax.helpers.DefaultHandler;
 public class Rivet {
 
 	private static boolean RUNNING=true;
-	private DisplayModel display_model;
 	private DisplayView display_view;
 	private static Rivet theApp;
 	private static DisplayFrame window;
 	public final String program_version="Rivet (Build 90)";
-	public int vertical_scrollbar_value=0;
-	public int horizontal_scrollbar_value=0;
 	public boolean pReady=false;
 	private int system=1;
 	public final Font plainFont=new Font("SanSerif",Font.PLAIN,12);
@@ -89,7 +86,6 @@ public class Rivet {
 	private int activeTriggerCount=0;
 	private boolean pauseDisplay=false;
 	private boolean autoScroll=true;
-	private long lastUserScroll=0;
 	private boolean smallScreen=false;
 	private boolean displayBadPackets=false;
 	private boolean logInUTC=false;
@@ -150,9 +146,7 @@ public class Rivet {
 		int height=2*wndsize.height/3;
 		window.setBounds(x,y,width,height);
 		window.addWindowListener(new WindowHandler());
-		display_model=new DisplayModel();
-		display_view=new DisplayView(this);
-		display_model.addObserver(display_view);
+		display_view=new DisplayView();
 		window.getContentPane().add(display_view,BorderLayout.CENTER);
 		window.setVisible(true);
 		// If this width is less than 600 then this is a very small screen
@@ -169,10 +163,6 @@ public class Rivet {
 
 	public DisplayFrame getWindow()	{
 		return window;	
-		}
-
-	public DisplayModel getModel() {
-		return display_model;
 		}
 
 	public DisplayView getView() {
@@ -325,7 +315,7 @@ public class Rivet {
 				// Once the buffer data has been read we are done
 				if (wavFileLoadOngoing==true)	{
 					String disp=getTimeStamp()+" WAV file loaded and analysis complete ("+Long.toString(inputThread.getSampleCounter())+" samples read)";
-					writeLine(disp,Color.BLACK,italicFont);		
+					writeLine(disp,Color.BLACK,italicFont);
 					wavFileLoadOngoing=false;
 					}
 				}
@@ -548,7 +538,7 @@ public class Rivet {
 	public void setSoundCardInputOnly(boolean s)	{
 		this.soundCardInput=s;
 	}
-	
+
 	// Reset the decoder state
 	public void resetDecoderState()	{
 		// CROWD36
@@ -1228,25 +1218,7 @@ public class Rivet {
 	public int getCurrentHeight ()	{
 		return window.getBounds().height;
 	}
-	
-	// Tell the window to scroll down by a set amount
-	public void scrollDown(int v)	{
-		window.scrollDown((v-window.getBounds().height)+200);
-	}
-	
-	// Return if the vertical scroll bar is being adjusted
-	public boolean isAdjusting()	{
-		return window.isAdjusting();
-	}
 
-	public long getLastUserScroll() {
-		return lastUserScroll;
-	}
-
-	public void setLastUserScroll(long lastUserScroll) {
-		this.lastUserScroll = lastUserScroll;
-	}
-	
 	// Write system information for diagnostic purposes to the screen
 	public void displaySystemInfo ()	{
 		// First clear the screen
@@ -1360,6 +1332,4 @@ public class Rivet {
 		}
 		return sb.toString();
 	}
-	
-	
 }
