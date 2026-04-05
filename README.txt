@@ -171,7 +171,11 @@ Build 91 Add selectable F06a decoding in two different formats (ASCII and binary
          Minor fixes and display changes in FSK200/500, XPA, XPA2, Baudot
          Add and update some links
          Gradle wrapper update to 7.5
-                
+Build 92 Complete rewrite of FSK FFT routines
+         Add support for 12khz sample rate in all FSK modes
+         Fix Inverted mode in FSK modes
+         Improve F06/F06a mode hot-switching
+
 Reported Bugs
 -------------
 Still problems with ..

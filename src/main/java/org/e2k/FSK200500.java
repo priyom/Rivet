@@ -67,9 +67,9 @@ public class FSK200500 extends FSK {
 		// Just starting
 		if (state==0)	{
 			// Check the sample rate
-			if (waveData.getSampleRate()!=8000.0)	{
+			if (waveData.getSampleRate()!=8000.0 && waveData.getSampleRate()!=12000.0)	{
 				state=-1;
-				JOptionPane.showMessageDialog(null,"WAV files containing\nFSK200/500 recordings must have\nbeen recorded at a sample rate\nof 8 KHz.","Rivet", JOptionPane.INFORMATION_MESSAGE);
+				JOptionPane.showMessageDialog(null,"WAV files containing\nFSK200/500 recordings must have\nbeen recorded at a sample rate\nof 8 KHz or 12 Khz.","Rivet", JOptionPane.INFORMATION_MESSAGE);
 				return false;
 			}
 			// Check this is a mono recording
@@ -132,7 +132,7 @@ public class FSK200500 extends FSK {
 				}
 				// If this is a full bit add it to the character buffer
 				// If it is a half bit it signals the end of a character
-				if (ibit==2)	{
+				if ((!theApp.isInvertSignal() && ibit==2) || (theApp.isInvertSignal() && ibit==3))	{
 					totalCharCounter++;
 					symbolCounter=(int)samplesPerSymbol/2;
 					// If debugging display the character buffer in binary form + the number of bits since the last character and this baudot character
@@ -226,11 +226,11 @@ public class FSK200500 extends FSK {
 	}
 	
 	// Find the frequency of a FSK200/500 symbol
-	// Currently the program only supports a sampling rate of 8000 KHz
+	// Currently the program only supports a sampling rate of 8000 Hz and 12000 hz
 	private int fsk200500Freq (CircularDataBuffer circBuf,WaveData waveData,int pos)	{
-		// 8 KHz sampling
-		if (waveData.getSampleRate()==8000.0)	{
-			int freq=doFSK200500_8000FFT(circBuf,waveData,pos,(int)samplesPerSymbol);
+		// 8 and 12 KHz sampling
+		if (waveData.getSampleRate()==8000.0 || waveData.getSampleRate()==12000.0)	{
+			int freq=doRTTY_FFT(circBuf,waveData,pos,(int)samplesPerSymbol,baudRate);
 			return freq;
 		}
 		return -1;
@@ -243,9 +243,9 @@ public class FSK200500 extends FSK {
 		int v;
 		int sp=(int)samplesPerSymbol/2;
 		// First half
-		double early[]=do64FFTHalfSymbolBinRequest (circBuf,pos,sp,lowBin,highBin);
+		double early[]=doRTTYHalfSymbolBinRequest (baudRate,circBuf,pos,sp,lowBin,highBin);
 		// Last half
-		double late[]=do64FFTHalfSymbolBinRequest (circBuf,(pos+sp),sp,lowBin,highBin);
+		double late[]=doRTTYHalfSymbolBinRequest (baudRate,circBuf,(pos+sp),sp,lowBin,highBin);
 		// Determine the symbol value
 		int high1,high2;
 		if (early[0]>early[1]) high1=0;

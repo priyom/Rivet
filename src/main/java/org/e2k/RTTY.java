@@ -21,6 +21,7 @@ public class RTTY extends FSK {
 	private double baudRate=50;
 	private int state=0;
 	private double samplesPerSymbol;
+	private double sampleRate;
 	private Rivet theApp;
 	public long sampleCount=0;
 	private long symbolCounter=0;
@@ -50,7 +51,8 @@ public class RTTY extends FSK {
 	public void setBaudRate(double br) {
 		if (br!=this.baudRate) setState(0);
 		this.baudRate=br;
-		samplesPerSymbol=samplesPerSymbol(baudRate,8000);
+		//Recalculate samples per symbol
+		samplesPerSymbol=samplesPerSymbol(baudRate,sampleRate);
 	}
 
 	public double getBaudRate() {
@@ -73,9 +75,9 @@ public class RTTY extends FSK {
 		// Just starting
 		if (state==0)	{
 			// Check the sample rate
-			if (waveData.getSampleRate()!=8000.0)	{
+			if (waveData.getSampleRate()!=8000.0 && waveData.getSampleRate()!=12000.0)	{
 				state=-1;
-				JOptionPane.showMessageDialog(null,"WAV files containing\nRTTY recordings must have\nbeen recorded at a sample rate\nof 8 KHz.","Rivet", JOptionPane.INFORMATION_MESSAGE);
+				JOptionPane.showMessageDialog(null,"WAV files containing\nRTTY recordings must have\nbeen recorded at a sample rate\nof 8 KHz or 12 Khz.","Rivet", JOptionPane.INFORMATION_MESSAGE);
 				return false;
 			}
 			// Check this is a mono recording
@@ -91,6 +93,9 @@ public class RTTY extends FSK {
 				return false;
 			}
 			setState(1);
+			//Update sample rate and samples per second variables
+			sampleRate= waveData.getSampleRate();
+			samplesPerSymbol=samplesPerSymbol(baudRate,sampleRate);
 			// sampleCount must start negative to account for the buffer gradually filling
 			sampleCount=0-circBuf.retMax();
 			symbolCounter=0;
@@ -150,7 +155,7 @@ public class RTTY extends FSK {
 				if ((av>40.0)&&(missingCharCounter>2)) setState(1);
 					
 				// Is this the end of a character
-				if (((stopBits==1.5)||(stopBits==2.5))&&(ibit==2))	{
+				if (((!theApp.isInvertSignal() && (stopBits==1.5)||(stopBits==2.5))&&(ibit==2)) || (theApp.isInvertSignal() && (stopBits==1.5)||(stopBits==2.5))&&(ibit==3))	{
 					cend=true;
 				}
 				else if (stopBits==1)	{
@@ -218,11 +223,11 @@ public class RTTY extends FSK {
 	
 	
 	// Find the frequency of a RTTY symbol
-	// Currently the program only supports a sampling rate of 8000 KHz
+	// Currently the program only supports a sampling rate of 8000 KHz and 12000 Khz
 	private int rttyFreq (CircularDataBuffer circBuf,WaveData waveData,int pos)	{
-		// 8 KHz sampling
-		if (waveData.getSampleRate()==8000.0)	{
-			int freq=doRTTY_8000FFT(circBuf,waveData,pos,(int)samplesPerSymbol,baudRate);
+		// 8 and 12 KHz sampling
+		if (waveData.getSampleRate()==8000.0 || waveData.getSampleRate()==12000.0)	{
+			int freq=doRTTY_FFT(circBuf,waveData,pos,(int)samplesPerSymbol,baudRate);
 			return freq;
 		}
 		return -1;
@@ -390,9 +395,9 @@ public class RTTY extends FSK {
 		int v=0;
 		int sp=(int)samplesPerSymbol/2;
 		// First half
-		double early[]=doRTTYHalfSymbolBinRequest(baudRate,circBuf,pos,lowBin,highBin);
+		double early[]=doRTTYHalfSymbolBinRequest(baudRate,circBuf,pos,sp,lowBin,highBin);
 		// Last half
-		double late[]=doRTTYHalfSymbolBinRequest(baudRate,circBuf,(pos+sp),lowBin,highBin);
+		double late[]=doRTTYHalfSymbolBinRequest(baudRate,circBuf,(pos+sp),sp,lowBin,highBin);
 		// Store the previous symbol energy total
 		previousSymbolTotal=symbolTotal;
 		symbolTotal=early[0]+late[0]+early[1]+late[1];

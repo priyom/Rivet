@@ -59,9 +59,9 @@ public class CIS3650 extends FSK {
 		// Initial startup
 		if (state==0)	{
 			// Check the sample rate
-			if (waveData.getSampleRate()!=8000.0)	{
+			if (waveData.getSampleRate()!=8000.0 && waveData.getSampleRate()!=12000.0)	{
 				state=-1;
-				JOptionPane.showMessageDialog(null,"WAV files containing\nCIS 36-50 recordings must have\nbeen recorded at a sample rate\nof 8 KHz.","Rivet", JOptionPane.INFORMATION_MESSAGE);
+				JOptionPane.showMessageDialog(null,"WAV files containing\nCIS 36-50 recordings must have\nbeen recorded at a sample rate\nof 8 KHz or 12 Khz.","Rivet", JOptionPane.INFORMATION_MESSAGE);
 				return false;
 			}
 			// Check this is a mono recording
@@ -273,16 +273,16 @@ public class CIS3650 extends FSK {
 
 	// Get the frequency at a certain symbol
 	private int getSymbolFreq (CircularDataBuffer circBuf,WaveData waveData,int start)	{
-		int fr=do80FFT(circBuf,waveData,start);
+		int fr=doRTTY_FFT(circBuf,waveData,start,(int)samplesPerSymbol50,50);
 		return fr;
 	}
 	
 	// Return the symbol frequency given the bins that hold the possible tones
 	private boolean getSymbolFreqBin (CircularDataBuffer circBuf,WaveData waveData,int start)	{
 		boolean bit;
-		double early[]=do80FFTBinRequest(circBuf,waveData,start,lowBin,highBin);
+		double early[]=doRTTYHalfSymbolBinRequest(50,circBuf,start,(int)samplesPerSymbol50/2,lowBin,highBin);
 		start=start+((int)samplesPerSymbol50/2);
-		double late[]=do80FFTBinRequest(circBuf,waveData,start,lowBin,highBin);
+		double late[]=doRTTYHalfSymbolBinRequest(50,circBuf,start,(int)samplesPerSymbol50/2,lowBin,highBin);
 		double lowTotal=early[0]+late[0];
 		double highTotal=early[1]+late[1];
 		if (theApp.isInvertSignal()==false)	{

@@ -71,9 +71,9 @@ public class FSK2001000 extends FSK {
 		// Just starting
 		if (state==0)	{
 			// Check the sample rate
-			if (waveData.getSampleRate()!=8000.0)	{
+			if (waveData.getSampleRate()!=8000.0 && waveData.getSampleRate()!=12000.0)	{
 				state=-1;
-				JOptionPane.showMessageDialog(null,"WAV files containing\nFSK200/1000 recordings must have\nbeen recorded at a sample rate\nof 8 KHz.","Rivet", JOptionPane.INFORMATION_MESSAGE);
+				JOptionPane.showMessageDialog(null,"WAV files containing\nFSK200/1000 recordings must have\nbeen recorded at a sample rate\nof 8 KHz or 12 Khz.","Rivet", JOptionPane.INFORMATION_MESSAGE);
 				return false;
 			}
 			// Check this is a mono recording
@@ -167,7 +167,7 @@ public class FSK2001000 extends FSK {
 		if (freq2>freq1) return null;
 		// Check there is around 1000 Hz of difference between the tones
 		difference=freq1-freq2;
-		if ((difference<975)||(difference>1025) ) return null;
+		if ((difference<975)||(difference>1025)) return null;
 		int freq3=fsk2001000Freq(circBuf,waveData,(int)samplesPerSymbol*2);
 		// Don't waste time carrying on if freq1 isn't the same as freq3
 		if (freq1!=freq3) return null;
@@ -195,9 +195,9 @@ public class FSK2001000 extends FSK {
 	// Find the frequency of a FSK200/1000 symbol
 	// Currently the program only supports a sampling rate of 8000 KHz
 	protected int fsk2001000Freq (CircularDataBuffer circBuf,WaveData waveData,int pos)	{
-		// 8 KHz sampling
-		if (waveData.getSampleRate()==8000.0)	{
-			int freq=doFSK200500_8000FFT(circBuf,waveData,pos,(int)samplesPerSymbol);
+		// 8 and 12 KHz sampling
+		if (waveData.getSampleRate()==8000.0 || waveData.getSampleRate()==12000.0)	{
+			int freq=doRTTY_FFT(circBuf,waveData,pos,(int)samplesPerSymbol,baudRate);
 			return freq;
 		}
 		return -1;
@@ -210,9 +210,9 @@ public class FSK2001000 extends FSK {
 		boolean out;
 		int sp=(int)samplesPerSymbol/2;
 		// First half
-		double early[]=do64FFTHalfSymbolBinRequest (circBuf,pos,sp,lowBin,highBin);
+		double early[]=doRTTYHalfSymbolBinRequest (baudRate,circBuf,pos,sp,lowBin,highBin);
 		// Last half
-		double late[]=do64FFTHalfSymbolBinRequest (circBuf,(pos+sp),sp,lowBin,highBin);
+		double late[]=doRTTYHalfSymbolBinRequest (baudRate,circBuf,(pos+sp),sp,lowBin,highBin);
 		// Feed the early late difference into a buffer
 		if ((early[0]+late[0])>(early[1]+late[1])) addToAdjBuffer(getPercentageDifference(early[0],late[0]));
 		else addToAdjBuffer(getPercentageDifference(early[1],late[1]));
@@ -365,6 +365,7 @@ public class FSK2001000 extends FSK {
 			theApp.writeLine(String.format("[INFO] F06a block detected. Switching to F06a decoding..."), Color.BLUE, theApp.boldFont);
 			theApp.setSystem(12);
 			theApp.setModeLabel(theApp.MODENAMES[12]);
+			transferSyncData(theApp.f06aHandler);
 			return;
 		} else if (frameIndex == 1 && data[0] == 0x1b) {
 			txType = 0;
@@ -423,4 +424,23 @@ public class FSK2001000 extends FSK {
 		}
 		return msgList;
 	} 
+
+	//Copies the sync data to another FSK2001000 decoder
+	//Used when hot-switching between F06 and F06a to not waste time syncing for a second time
+	protected void transferSyncData(FSK2001000 destination){
+		destination.setState(this.getState());
+		destination.samplesPerSymbol=this.samplesPerSymbol;
+		destination.sampleCount=this.sampleCount;
+		destination.symbolCounter=this.symbolCounter;
+		destination.energyBuffer=this.energyBuffer;
+		destination.highBin=this.highBin;
+		destination.lowBin=this.lowBin;
+		destination.adjBuffer=this.adjBuffer;
+		destination.adjCounter=this.adjCounter;
+		destination.circularBitSet=this.circularBitSet;
+		destination.bitCount=this.bitCount;
+		destination.blockCount=this.blockCount;
+		destination.missingBlockCount=this.missingBlockCount;
+		destination.bitsSinceLastBlockHeader=this.bitsSinceLastBlockHeader;
+	}
 }

@@ -50,9 +50,9 @@ public class GW extends FSK {
 		// Initial startup
 		if (state==0)	{
 			// Check the sample rate
-			if (waveData.getSampleRate()!=8000.0)	{
+			if (waveData.getSampleRate()!=8000.0 && waveData.getSampleRate()!=12000.0)	{
 				state=-1;
-				JOptionPane.showMessageDialog(null,"WAV files containing\nGW FSK recordings must have\nbeen recorded at a sample rate\nof 8 KHz.","Rivet", JOptionPane.INFORMATION_MESSAGE);
+				JOptionPane.showMessageDialog(null,"WAV files containing\nGW FSK recordings must have\nbeen recorded at a sample rate\nof 8 KHz or 12 Khz.","Rivet", JOptionPane.INFORMATION_MESSAGE);
 				return false;
 			}
 			// Check this is a mono recording
@@ -125,7 +125,7 @@ public class GW extends FSK {
 	
 	// Get the frequency at a certain symbol
 	private int getSymbolFreq (CircularDataBuffer circBuf,WaveData waveData,int start)	{
-		int fr=do100baudFFT(circBuf,waveData,start);
+		int fr=doRTTY_FFT(circBuf,waveData,start,(int)samplesPerSymbol100,100);
 		return fr;
 	}
 	
@@ -136,9 +136,9 @@ public class GW extends FSK {
 		boolean out;
 		int sp=(int)samplesPerSymbol100/2;
 		// First half
-		double early[]=do100baudFSKHalfSymbolBinRequest(circBuf,pos,lowBin,highBin);
+		double early[]=doRTTYHalfSymbolBinRequest(100,circBuf,pos,sp,lowBin,highBin);
 		// Last half
-		double late[]=do100baudFSKHalfSymbolBinRequest(circBuf,(pos+sp),lowBin,highBin);
+		double late[]=doRTTYHalfSymbolBinRequest(100,circBuf,(pos+sp),sp,lowBin,highBin);
 		// Feed the early late difference into a buffer
 		if ((early[0]+late[0])>(early[1]+late[1])) addToAdjBuffer(getPercentageDifference(early[0],late[0]));
 		else addToAdjBuffer(getPercentageDifference(early[1],late[1]));
